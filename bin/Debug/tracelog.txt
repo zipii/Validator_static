@@ -1,0 +1,6 @@
+quality Verbose: 0 : Validator started
+quality Verbose: 2 :  Pārbauda vai varchar satur 11-zīmīgu skaitli kļūda
+quality Verbose: 3 : Pārbauda, vai varchar satur vienu no 2 atļautām vērtībām (“pieaugušo neformālā izglītība” vai “ interešu izglītība”) kļūda
+quality Verbose: 6 : Pārbauda, vai varchar satur datumu formātā - (“DD.MM.YYYY. -  DD.MM.YYYY.”) kļūda
+quality Verbose: 7 : Pārbauda, vai varchar satur simbolus formātā - (“DIKS-YY-ID-ail”). kļūda
+quality Verbose: 0 : Validator ended
