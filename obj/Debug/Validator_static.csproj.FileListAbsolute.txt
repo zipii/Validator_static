@@ -7,3 +7,5 @@ C:\Bakalaurs\Validator_static\Validator_static\obj\Debug\Validator_static.Proper
 C:\Bakalaurs\Validator_static\Validator_static\obj\Debug\Validator_static.csproj.GenerateResource.Cache
 C:\Bakalaurs\Validator_static\Validator_static\obj\Debug\Validator_static.exe
 C:\Bakalaurs\Validator_static\Validator_static\obj\Debug\Validator_static.pdb
+C:\Bakalaurs\Validator_static\Validator_static\bin\Debug\System.Data.SQLite.dll
+C:\Bakalaurs\Validator_static\Validator_static\bin\Debug\System.Data.SQLite.xml

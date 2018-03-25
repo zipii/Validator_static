@@ -7,6 +7,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using System.Data.SQLite;
 
 namespace Validator_static
 {
@@ -41,18 +42,23 @@ namespace Validator_static
 
         private void Button_Click(object sender, EventArgs e)
         {
-            var validator = new Valid();
-
-            validator.licencespieprasitajs = "Klavs";
-            validator.registracijasnumurs = "1234568910";
-            validator.programmasnosaukums = "Test";
-            validator.programmasveids = "Nepareizs";
-            validator.realizacijasvieta = "Latvija";
-            validator.stundas = 2;
-            validator.lemums = "pagarināt";
-            validator.termins = "04.03.2018. - 05.03.2018";
-            validator.licencesnumurs = "Numurs";
-            validator.Validator();
+            var validator = new Valid_2();
+            var dt = (DataTable)grid.DataSource;
+            foreach (DataRow  row in dt.Rows)
+            {
+                validator.id = (long)row["ID"];
+                validator.licencespieprasitajs = row["Licences-pieprasitajs"].ToString();
+                validator.registracijasnumurs = row["Registracijas-numurs"].ToString();
+                validator.programmasnosaukums = row["Programmas-nosaukums"].ToString();
+                validator.programmasveids = row["Programmas-veids"].ToString();
+                validator.realizacijasvieta = row["Realizacijas-vieta"].ToString();
+                validator.stundas =  (row["Stundas"].ToString() == "") ? 0 : Convert.ToInt32(row["Stundas"].ToString());
+                validator.lemums = row["Lemums"].ToString();
+                validator.termins = row["Termins"].ToString();
+                validator.licencesnumurs =row["Licences-numurs"].ToString();
+                validator.Validator();
+            }
+         
 
 
         }
@@ -60,19 +66,37 @@ namespace Validator_static
         DataTable LoadData()
         {
             var dt = new DataTable();
-            dt.Columns.Add("Licences-Pieprasitajs",typeof(string));
-            dt.Columns.Add("Registracijas-numurs",typeof(string));
-            dt.Columns.Add("Programmas-nosaukums", typeof(string));
-            dt.Columns.Add("Programmas-veids", typeof(string));
-            dt.Columns.Add("Realiacijas-vieta", typeof(string));
-            dt.Columns.Add("Stundas", typeof(int));
-            dt.Columns.Add("Lemums", typeof(string));
-            dt.Columns.Add("Termins", typeof(DateTime));
-            dt.Columns.Add("Licences-numurs", typeof(string));
+           
+            using ( var connection = new SQLiteConnection(@"Data Source=C:\Bakalaurs\Validator_static\Validator_static\licences.db;Version=3;"))
+            {
+                connection.Open();
 
-            dt.Rows.Add("Klavs", "12345678910", "Test",
-               "Nepareizs", "Latvija", 2, 
-               "pagarināt", "04/03/2018", "Numurs");
+                using (var adapter = new SQLiteDataAdapter())
+                {
+                    using (var cmd = new SQLiteCommand())
+                    {
+                        cmd.Connection = connection;
+                        cmd.CommandText = "SELECT * FROM [Licences-2013]";
+                        adapter.SelectCommand = cmd;
+                        adapter.Fill(dt);
+                    }
+                }
+            }
+            //dt.Columns.Add("Licences-Pieprasitajs",typeof(string));
+            //dt.Columns.Add("Registracijas-numurs",typeof(string));
+            //dt.Columns.Add("Programmas-nosaukums", typeof(string));
+            //dt.Columns.Add("Programmas-veids", typeof(string));
+            //dt.Columns.Add("Realiacijas-vieta", typeof(string));
+            //dt.Columns.Add("Stundas", typeof(int));
+            //dt.Columns.Add("Lemums", typeof(string));
+            //dt.Columns.Add("Termins", typeof(DateTime));
+            //dt.Columns.Add("Licences-numurs", typeof(string));
+
+            //dt.Rows.Add("Klavs", "12345678910", "Test",
+            //   "Nepareizs", "Latvija", 2, 
+            //   "pagarināt", "04/03/2018", "Numurs");
+            //return dt;
+
             return dt;
 
         }
