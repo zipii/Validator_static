@@ -42,6 +42,14 @@ namespace Validator_static
 
         private void Button_Click(object sender, EventArgs e)
         {
+            //Grafa izveide
+            var graph = LoadGraph(); 
+
+
+
+
+
+
             var validator = new Valid_2();
             var dt = (DataTable)grid.DataSource;
             foreach (DataRow  row in dt.Rows)
@@ -67,7 +75,7 @@ namespace Validator_static
         {
             var dt = new DataTable();
            
-            using ( var connection = new SQLiteConnection(@"Data Source=C:\Bakalaurs\Validator_static\Validator_static\licences.db;Version=3;"))
+            using ( var connection = new SQLiteConnection(@"Data Source=..\..\licences.db;Version=3;"))
             {
                 connection.Open();
 
@@ -101,6 +109,88 @@ namespace Validator_static
 
         }
 
+
+        Graph LoadGraph()
+        {
+            var dt = new DataSet();
+            
+            using (var connection = new SQLiteConnection(@"Data Source=..\..\dbred.sqlite;Version=3;"))
+            {
+                connection.Open();
+
+                using (var adapter = new SQLiteDataAdapter())
+                {
+                    using (var cmd = new SQLiteCommand())
+                    {
+                        cmd.Connection = connection;
+                        cmd.CommandText = @"
+                            
+                            SELECT Node.ID, Node.Type FROM Node
+                            WHERE Node.DiagramId = 21;
+
+                            SELECT Node.ID ,Compartment.Type 'Text', Compartment.Value FROM Node
+                            LEFT JOIN Compartment ON Node.ID = Compartment.ElementId
+                            WHERE Node.DiagramId = 21;
+
+                            SELECT Edge.ID, Edge.StartNodeId, Edge.EndNodeId, Compartment.Value  FROM Edge
+                            Join Compartment ON Edge.ID = Compartment.ElementId
+                            WHERE  Edge.DiagramId = 21 AND Edge.Type like 'Pareja' AND Compartment.Type like 'Name' ;
+                            
+                          
+                            
+                            
+                            ";
+                        adapter.SelectCommand = cmd;
+                        adapter.Fill(dt);
+                        dt.Tables[0].TableName = "Node";
+                        dt.Tables[1].TableName = "Compartment";
+                        dt.Tables[2].TableName = "Edge";
+
+                        dt.Tables[0].PrimaryKey = new DataColumn[] { dt.Tables[0].Columns["ID"] };
+                        //TODO: pārliec ka apvienošanai ir vismaz 1 atribūts
+                        dt.Tables[1].PrimaryKey = new DataColumn[] { dt.Tables[1].Columns["ID"], dt.Tables[1].Columns["Text"]  };
+                        dt.Tables[2].PrimaryKey = new DataColumn[] { dt.Tables[2].Columns["ID"] };
+
+
+
+                    }
+                }
+            }
+
+            var graph = new Graph();
+            
+            foreach (DataRow row in dt.Tables[0].Rows )
+            {
+                if (row.ItemArray[1].ToString() == "Sakums")
+                {
+                    graph.AddNode(row.ItemArray[1].ToString(), Type.Sakums, Branch.Nothing);
+                }
+                else if (row.ItemArray[1].ToString() == "Beigas")
+                {
+                    graph.AddNode(row.ItemArray[1].ToString(), Type.Beigas, Branch.Nothing);
+                }
+                else if (row.ItemArray[1].ToString() == "Apvienosana")
+                {
+                    graph.AddNode(row.ItemArray[1].ToString(), Type.Apvienosana, Branch.Nothing);
+                }
+                else if (row.ItemArray[1].ToString() == "Darbiba")
+                {
+                   
+                    graph.AddNode(row.ItemArray[1].ToString(), Type.Darbiba, dt.Tables[1].Rows.Find(new object[] { row.ItemArray[0], "Name" }).ItemArray[2].ToString(), 
+                        Branch.Nothing);
+                }
+
+                else if (row.ItemArray[1].ToString() == "Zarosanas")
+                {
+                    graph.AddNode(row.ItemArray[1].ToString(), Type.Darbiba,Branch.Nothing,
+                        dt.Tables[1].Rows.Find(new object[] { row.ItemArray[0], "Informal" }).ItemArray[2].ToString(),
+                        dt.Tables[1].Rows.Find(new object[] { row.ItemArray[0], "Formal" }).ItemArray[2].ToString());
+                }
+
+            }
+
+            return graph;
+        }
 
 
 

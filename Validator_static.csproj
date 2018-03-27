@@ -52,6 +52,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Graph.cs" />
     <Compile Include="Valid.cs" />
     <Compile Include="Validator.cs">
       <SubType>Form</SubType>
