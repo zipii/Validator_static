@@ -1,0 +1,11 @@
+C:\Bakalaurs\Validator_static\Validator_static\bin\x64\Debug\Validator_static.exe.config
+C:\Bakalaurs\Validator_static\Validator_static\bin\x64\Debug\Validator_static.exe
+C:\Bakalaurs\Validator_static\Validator_static\bin\x64\Debug\Validator_static.pdb
+C:\Bakalaurs\Validator_static\Validator_static\bin\x64\Debug\System.Data.SQLite.dll
+C:\Bakalaurs\Validator_static\Validator_static\bin\x64\Debug\System.Data.SQLite.xml
+C:\Bakalaurs\Validator_static\Validator_static\obj\x64\Debug\Validator_static.Validator.resources
+C:\Bakalaurs\Validator_static\Validator_static\obj\x64\Debug\Validator_static.Properties.Resources.resources
+C:\Bakalaurs\Validator_static\Validator_static\obj\x64\Debug\Validator_static.csproj.GenerateResource.Cache
+C:\Bakalaurs\Validator_static\Validator_static\obj\x64\Debug\Validator_static.exe
+C:\Bakalaurs\Validator_static\Validator_static\obj\x64\Debug\Validator_static.pdb
+C:\Bakalaurs\Validator_static\Validator_static\obj\x64\Debug\Validator_static.csprojResolveAssemblyReference.cache

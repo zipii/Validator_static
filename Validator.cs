@@ -13,6 +13,8 @@ namespace Validator_static
 {
     public partial class Validator : Form
     {
+        private DataSet graphInformation;
+
         DataGridView grid { get; set; }
         public Validator()
         {
@@ -43,29 +45,120 @@ namespace Validator_static
         private void Button_Click(object sender, EventArgs e)
         {
             //Grafa izveide
-            var graph = LoadGraph(); 
-
-
-
-
-
-
-            var validator = new Valid_2();
-            var dt = (DataTable)grid.DataSource;
-            foreach (DataRow  row in dt.Rows)
+            var graph = LoadGraph();
+            Console.Write("test");
+            foreach (Node node in graph.Nodes)
             {
-                validator.id = (long)row["ID"];
-                validator.licencespieprasitajs = row["Licences-pieprasitajs"].ToString();
-                validator.registracijasnumurs = row["Registracijas-numurs"].ToString();
-                validator.programmasnosaukums = row["Programmas-nosaukums"].ToString();
-                validator.programmasveids = row["Programmas-veids"].ToString();
-                validator.realizacijasvieta = row["Realizacijas-vieta"].ToString();
-                validator.stundas =  (row["Stundas"].ToString() == "") ? 0 : Convert.ToInt32(row["Stundas"].ToString());
-                validator.lemums = row["Lemums"].ToString();
-                validator.termins = row["Termins"].ToString();
-                validator.licencesnumurs =row["Licences-numurs"].ToString();
-                validator.Validator();
+                //Iegūst rindas ar pārejām, kas saistītas ar notiekto virsotni 
+                var edgeRow = (from edge in graphInformation.Tables[2].AsEnumerable()
+                               where edge.Field<long>("EndNodeId") == node.ID || edge.Field<long>("StartNodeId") == node.ID
+                               select edge).ToList();
+
+                        
+                switch (node.type)
+                {   
+                    case Type.Sakums:
+                        
+                        graph.AddDirectedEdge(node, graph.getNodeByID(edgeRow[0].Field<long>("EndNodeId")));
+
+                        break;
+                    case Type.Beigas:
+
+                        break;
+                    
+                    case Type.Zarosanas:
+                        foreach (var edge in edgeRow)
+                        {   
+                            // Ieenākošam zaram apskatām vai nav gadījumā no zarošanās
+                            if (edge.Field<String>("Value") == "OK" && edge.Field<long>("EndNodeId") == node.ID)
+                            {
+                                node.branch = Branch.Ok;
+                            }
+                            else if (edge.Field<String>("value") == "NO" && edge.Field<long>("EndNodeId") == node.ID)
+                            {
+                                node.branch = Branch.No;
+                            }
+                            else if (edge.Field<String>("value") == "" && edge.Field<long>("EndNodeId") == node.ID)
+                            {
+                                continue;
+                            }
+                            else
+                            {
+                                graph.AddDirectedEdge(node, graph.getNodeByID(edge.Field<long>("EndNodeId")));
+                            }
+                        }
+
+                        break;
+                    case Type.Darbiba:
+                        foreach (var edge in edgeRow)
+                        {
+
+                            if (edge.Field<String>("Value") == "OK" && edge.Field<long>("EndNodeId") == node.ID)
+                            {
+                                node.branch = Branch.Ok;
+                            }
+                            else if (edge.Field<String>("value") == "NO" && edge.Field<long>("EndNodeId") == node.ID)
+                            {
+                                node.branch = Branch.No;
+                            }
+                            else if (edge.Field<String>("value") == "" && edge.Field<long>("EndNodeId") == node.ID)
+                            {
+                                continue;
+                            }
+                            else
+                            {
+                                graph.AddDirectedEdge(node, graph.getNodeByID(edge.Field<long>("EndNodeId")));
+                            }
+                        }
+                        break;
+                    case Type.Apvienosana:
+                        foreach (var edge in edgeRow)
+                        {
+                           
+                            if (edge.Field<String>("Value") == "OK" && edge.Field<long>("EndNodeId") == node.ID)
+                            {
+                                node.branch = Branch.Ok;
+                            }
+                            else if (edge.Field<String>("value") == "NO" && edge.Field<long>("EndNodeId") == node.ID)
+                            {
+                                node.branch = Branch.No;
+                            }
+                            else if (edge.Field<String>("value") == "" && edge.Field<long>("EndNodeId") == node.ID)
+                            {
+                                continue;
+                            }
+                            else
+                            {
+                                graph.AddDirectedEdge(node, graph.getNodeByID(edge.Field<long>("EndNodeId")));
+                            }
+                        }
+                        break;
+               
+                }
+
+                Console.Write(node.ID);
             }
+
+            return;
+
+
+
+            //var validator = new Valid_2();
+            //var dt = (DataTable)grid.DataSource;
+            //foreach (DataRow  row in dt.Rows)
+            //{
+            //    validator.id = (long)row["ID"];
+            //    validator.licencespieprasitajs = row["Licences-pieprasitajs"].ToString();
+            //    validator.registracijasnumurs = row["Registracijas-numurs"].ToString();
+            //    validator.programmasnosaukums = row["Programmas-nosaukums"].ToString();
+            //    validator.programmasveids = row["Programmas-veids"].ToString();
+            //    validator.realizacijasvieta = row["Realizacijas-vieta"].ToString();
+            //    validator.stundas =  (row["Stundas"].ToString() == "") ? 0 : Convert.ToInt32(row["Stundas"].ToString());
+            //    validator.lemums = row["Lemums"].ToString();
+            //    validator.termins = row["Termins"].ToString();
+            //    validator.licencesnumurs =row["Licences-numurs"].ToString();
+            //    validator.Validator();
+            //}
          
 
 
@@ -73,9 +166,9 @@ namespace Validator_static
 
         DataTable LoadData()
         {
-            var dt = new DataTable();
+            var  dt = new DataTable();
            
-            using ( var connection = new SQLiteConnection(@"Data Source=..\..\licences.db;Version=3;"))
+            using ( var connection = new SQLiteConnection(@"Data Source=..\..\..\licences.db;Version=3;"))
             {
                 connection.Open();
 
@@ -112,9 +205,9 @@ namespace Validator_static
 
         Graph LoadGraph()
         {
-            var dt = new DataSet();
+            graphInformation = new DataSet();
             
-            using (var connection = new SQLiteConnection(@"Data Source=..\..\dbred.sqlite;Version=3;"))
+            using (var connection = new SQLiteConnection(@"Data Source=..\..\..\dbred.sqlite;Version=3;"))
             {
                 connection.Open();
 
@@ -141,15 +234,15 @@ namespace Validator_static
                             
                             ";
                         adapter.SelectCommand = cmd;
-                        adapter.Fill(dt);
-                        dt.Tables[0].TableName = "Node";
-                        dt.Tables[1].TableName = "Compartment";
-                        dt.Tables[2].TableName = "Edge";
+                        adapter.Fill(graphInformation);
+                        graphInformation.Tables[0].TableName = "Node";
+                        graphInformation.Tables[1].TableName = "Compartment";
+                        graphInformation.Tables[2].TableName = "Edge";
 
-                        dt.Tables[0].PrimaryKey = new DataColumn[] { dt.Tables[0].Columns["ID"] };
+                        graphInformation.Tables[0].PrimaryKey = new DataColumn[] { graphInformation.Tables[0].Columns["ID"] };
                         //TODO: pārliec ka apvienošanai ir vismaz 1 atribūts
-                        dt.Tables[1].PrimaryKey = new DataColumn[] { dt.Tables[1].Columns["ID"], dt.Tables[1].Columns["Text"]  };
-                        dt.Tables[2].PrimaryKey = new DataColumn[] { dt.Tables[2].Columns["ID"] };
+                        graphInformation.Tables[1].PrimaryKey = new DataColumn[] { graphInformation.Tables[1].Columns["ID"], graphInformation.Tables[1].Columns["Text"]  };
+                        graphInformation.Tables[2].PrimaryKey = new DataColumn[] { graphInformation.Tables[2].Columns["ID"], graphInformation.Tables[2].Columns["StartNodeId"], graphInformation.Tables[2].Columns["EndNodeId"] };
 
 
 
@@ -157,37 +250,38 @@ namespace Validator_static
                 }
             }
 
-            var graph = new Graph();
+            var graph = new  Graph();
             
-            foreach (DataRow row in dt.Tables[0].Rows )
+            foreach (DataRow row in graphInformation.Tables[0].Rows )
             {
                 if (row.ItemArray[1].ToString() == "Sakums")
                 {
-                    graph.AddNode(row.ItemArray[1].ToString(), Type.Sakums, Branch.Nothing);
+                    graph.AddNode((long)row.ItemArray[0], Type.Sakums, Branch.Nothing);
                 }
                 else if (row.ItemArray[1].ToString() == "Beigas")
                 {
-                    graph.AddNode(row.ItemArray[1].ToString(), Type.Beigas, Branch.Nothing);
+                    graph.AddNode((long)row.ItemArray[0], Type.Beigas, Branch.Nothing);
                 }
                 else if (row.ItemArray[1].ToString() == "Apvienosana")
                 {
-                    graph.AddNode(row.ItemArray[1].ToString(), Type.Apvienosana, Branch.Nothing);
+                    graph.AddNode((long)row.ItemArray[0], Type.Apvienosana, Branch.Nothing);
                 }
                 else if (row.ItemArray[1].ToString() == "Darbiba")
                 {
                    
-                    graph.AddNode(row.ItemArray[1].ToString(), Type.Darbiba, dt.Tables[1].Rows.Find(new object[] { row.ItemArray[0], "Name" }).ItemArray[2].ToString(), 
+                    graph.AddNode((long)row.ItemArray[0], Type.Darbiba, graphInformation.Tables[1].Rows.Find(new object[] { row.ItemArray[0], "Name" }).ItemArray[2].ToString(), 
                         Branch.Nothing);
                 }
 
                 else if (row.ItemArray[1].ToString() == "Zarosanas")
                 {
-                    graph.AddNode(row.ItemArray[1].ToString(), Type.Darbiba,Branch.Nothing,
-                        dt.Tables[1].Rows.Find(new object[] { row.ItemArray[0], "Informal" }).ItemArray[2].ToString(),
-                        dt.Tables[1].Rows.Find(new object[] { row.ItemArray[0], "Formal" }).ItemArray[2].ToString());
+                    graph.AddNode((long)row.ItemArray[0], Type.Zarosanas,Branch.Nothing,
+                        graphInformation.Tables[1].Rows.Find(new object[] { row.ItemArray[0], "Informal" }).ItemArray[2].ToString(),
+                        graphInformation.Tables[1].Rows.Find(new object[] { row.ItemArray[0], "Formal" }).ItemArray[2].ToString());
                 }
 
             }
+          
 
             return graph;
         }

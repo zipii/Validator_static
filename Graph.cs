@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace Validator_static
 {
-    public class Graph
+    public class Graph  
     {
         private NodeList nodeSet;
 
@@ -23,17 +23,17 @@ namespace Validator_static
 
   
 
-        public void AddNode(string ID, Type type, Branch branch)
+        public void AddNode(long ID, Type type, Branch branch)
         {
             nodeSet.Add(new SakumsBeigasApvienosanaNode(ID, type, branch));
         }
 
-        public void AddNode(string ID, Type type, string name, Branch branch)
+        public void AddNode(long ID, Type type, string name, Branch branch)
         {
             nodeSet.Add(new DarbibaNode(ID, type, branch ,name));
         }
 
-        public void AddNode (string ID, Type type, Branch branch, string informal, string formal)
+        public void AddNode (long ID, Type type, Branch branch, string informal, string formal)
         {
             nodeSet.Add(new ZarosanasNode(ID, type,branch, formal, informal));
         }
@@ -44,8 +44,9 @@ namespace Validator_static
             from.Neighbors.Add(to);
         }
 
-     
+   
 
+      
 
         public NodeList Nodes
         {
@@ -59,20 +60,26 @@ namespace Validator_static
         {
             get { return nodeSet.Count; }
         }
+
+        // Iegūst atbilstošo virsotni
+        public Node getNodeByID(long ID)
+        {
+            return Nodes.Find(x => x.ID == ID );
+        }
     }
 
 
     public class Node
     {
      
-        private string ID;
-        private Type type;
-        private Branch branch;
-        private NodeList neighbors = null;
+        public long ID;
+        public Type type;
+        public Branch branch;
+        private  NodeList neighbors = null;
 
         public Node() { }
-        public Node(string ID, Type type, Branch branch) : this(ID,type,branch, null) { }
-        public Node(string ID,Type type,Branch branch, NodeList neighbors)
+        //public Node(long ID, Type type, Branch branch) : this(ID,type,branch, null) { }
+        public Node(long ID,Type type,Branch branch, NodeList neighbors)
         {
             this.ID = ID;
             this.type = type;
@@ -88,27 +95,21 @@ namespace Validator_static
             {
                 if (neighbors == null)
                     neighbors = new NodeList();
-                    return Neighbors;
+                    return neighbors;
             }
             set
             {
-                Neighbors = value;
+                neighbors = value;
             }
         }
     }
 
 
-    public class NodeList : Collection<Node>
+    public class NodeList : List<Node>
     {
         public NodeList() : base() { }
 
-        public NodeList(int initialSize)
-        {
-            
-            for (int i = 0; i < initialSize; i++)
-                base.Items.Add(default(Node));
-        }
-
+       
        
     }
 
@@ -116,29 +117,29 @@ namespace Validator_static
     public class SakumsBeigasApvienosanaNode : Node
     {
         public SakumsBeigasApvienosanaNode() : base() { }
-        public SakumsBeigasApvienosanaNode(string ID, Type type, Branch branch) : base(ID, type, branch) { }
-        public SakumsBeigasApvienosanaNode(string ID, Type type, Branch branch ,NodeList neighbors) : base(ID,type,branch,neighbors) { }
+        public SakumsBeigasApvienosanaNode(long ID, Type type, Branch branch) : base(ID, type, branch, null) { }
+        public SakumsBeigasApvienosanaNode(long ID, Type type, Branch branch ,NodeList neighbors) : base(ID,type,branch,neighbors) { }
 
       
     }
 
     public class DarbibaNode : Node
     {
-        private string name;
+        public string name;
         public DarbibaNode() : base() { }
-        public DarbibaNode(string ID, Type type,Branch branch, string name) : base(ID, type, branch) { this.name = name; }
-        public DarbibaNode(string ID, Type type,string name,Branch branch, NodeList neighbors) : base(ID, type,branch, neighbors) { this.name = name; }
+        public DarbibaNode(long ID, Type type,Branch branch, string name) : base(ID, type, branch, null) { this.name = name; }
+        public DarbibaNode(long ID, Type type,string name,Branch branch, NodeList neighbors) : base(ID, type,branch, neighbors) { this.name = name; }
 
         
     }
 
     public class ZarosanasNode : Node
     {
-        private string formal;
-        private string informal;
+        public string formal;
+        public string informal;
         public ZarosanasNode() : base() { }
-        public ZarosanasNode(string ID, Type type, Branch branch ,string formal, string informal) : base(ID, type, branch) { this.formal = formal; this.informal = informal; }
-        public ZarosanasNode(string ID, Type type,Branch branch, string formal, string informal, NodeList neighbors) : base(ID, type,branch,neighbors) { this.formal = formal; this.informal = informal; }
+        public ZarosanasNode(long ID, Type type, Branch branch ,string formal, string informal) : base(ID, type, branch, null) { this.formal = formal; this.informal = informal; }
+        public ZarosanasNode(long ID, Type type,Branch branch, string formal, string informal, NodeList neighbors) : base(ID, type,branch,neighbors) { this.formal = formal; this.informal = informal; }
 
         
     }

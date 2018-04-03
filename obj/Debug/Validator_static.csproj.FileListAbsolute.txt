@@ -1,7 +1,6 @@
 C:\Bakalaurs\Validator_static\Validator_static\bin\Debug\Validator_static.exe.config
 C:\Bakalaurs\Validator_static\Validator_static\bin\Debug\Validator_static.exe
 C:\Bakalaurs\Validator_static\Validator_static\bin\Debug\Validator_static.pdb
-C:\Bakalaurs\Validator_static\Validator_static\obj\Debug\Validator_static.csprojResolveAssemblyReference.cache
 C:\Bakalaurs\Validator_static\Validator_static\obj\Debug\Validator_static.Validator.resources
 C:\Bakalaurs\Validator_static\Validator_static\obj\Debug\Validator_static.Properties.Resources.resources
 C:\Bakalaurs\Validator_static\Validator_static\obj\Debug\Validator_static.csproj.GenerateResource.Cache
