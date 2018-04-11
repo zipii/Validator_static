@@ -73,6 +73,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Graph.cs" />
+    <Compile Include="test_class.cs" />
     <Compile Include="Validator.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -81,6 +82,7 @@
     </Compile>
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Valid_2.cs" />
     <EmbeddedResource Include="Validator.resx">
       <DependentUpon>Validator.cs</DependentUpon>
     </EmbeddedResource>

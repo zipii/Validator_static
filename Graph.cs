@@ -23,19 +23,19 @@ namespace Validator_static
 
   
 
-        public void AddNode(long ID, Type type, Branch branch)
+        public void AddNode(long ID, Type type)
         {
-            nodeSet.Add(new SakumsBeigasApvienosanaNode(ID, type, branch));
+            nodeSet.Add(new SakumsBeigasApvienosanaNode(ID, type));
         }
 
-        public void AddNode(long ID, Type type, string name, Branch branch)
+        public void AddNode(long ID, Type type, string name)
         {
-            nodeSet.Add(new DarbibaNode(ID, type, branch ,name));
+            nodeSet.Add(new DarbibaNode(ID, type ,name));
         }
 
-        public void AddNode (long ID, Type type, Branch branch, string informal, string formal)
+        public void AddNode (long ID, Type type, string informal, string formal)
         {
-            nodeSet.Add(new ZarosanasNode(ID, type,branch, formal, informal));
+            nodeSet.Add(new ZarosanasNode(ID, type, formal, informal));
         }
 
 
@@ -61,10 +61,16 @@ namespace Validator_static
             get { return nodeSet.Count; }
         }
 
-        // Iegūst atbilstošo virsotni
+        // Iegūst atbilstošo virsotni pēc ID
         public Node getNodeByID(long ID)
         {
             return Nodes.Find(x => x.ID == ID );
+        }
+
+        // Iegūst virsotnes pēc Tipa
+        public Node getNodeByType (Type type )
+        {
+            return Nodes.First<Node>(x => x.type == type);
         }
     }
 
@@ -74,16 +80,16 @@ namespace Validator_static
      
         public long ID;
         public Type type;
-        public Branch branch;
+       // public Branch branch;
         private  NodeList neighbors = null;
 
         public Node() { }
         //public Node(long ID, Type type, Branch branch) : this(ID,type,branch, null) { }
-        public Node(long ID,Type type,Branch branch, NodeList neighbors)
+        public Node(long ID,Type type, NodeList neighbors)
         {
             this.ID = ID;
             this.type = type;
-            this.branch = branch;
+            //this.branch = branch;
             this.neighbors = neighbors;
         }
 
@@ -117,8 +123,8 @@ namespace Validator_static
     public class SakumsBeigasApvienosanaNode : Node
     {
         public SakumsBeigasApvienosanaNode() : base() { }
-        public SakumsBeigasApvienosanaNode(long ID, Type type, Branch branch) : base(ID, type, branch, null) { }
-        public SakumsBeigasApvienosanaNode(long ID, Type type, Branch branch ,NodeList neighbors) : base(ID,type,branch,neighbors) { }
+        public SakumsBeigasApvienosanaNode(long ID, Type type) : base(ID, type, null) { }
+        public SakumsBeigasApvienosanaNode(long ID, Type type ,NodeList neighbors) : base(ID,type,neighbors) { }
 
       
     }
@@ -127,8 +133,8 @@ namespace Validator_static
     {
         public string name;
         public DarbibaNode() : base() { }
-        public DarbibaNode(long ID, Type type,Branch branch, string name) : base(ID, type, branch, null) { this.name = name; }
-        public DarbibaNode(long ID, Type type,string name,Branch branch, NodeList neighbors) : base(ID, type,branch, neighbors) { this.name = name; }
+        public DarbibaNode(long ID, Type type, string name) : base(ID, type, null) { this.name = name; }
+        public DarbibaNode(long ID, Type type,string name, NodeList neighbors) : base(ID, type, neighbors) { this.name = name; }
 
         
     }
@@ -137,9 +143,22 @@ namespace Validator_static
     {
         public string formal;
         public string informal;
+        private List<String> _branch;
         public ZarosanasNode() : base() { }
-        public ZarosanasNode(long ID, Type type, Branch branch ,string formal, string informal) : base(ID, type, branch, null) { this.formal = formal; this.informal = informal; }
-        public ZarosanasNode(long ID, Type type,Branch branch, string formal, string informal, NodeList neighbors) : base(ID, type,branch,neighbors) { this.formal = formal; this.informal = informal; }
+        public ZarosanasNode(long ID, Type type ,string formal, string informal) : base(ID, type, null) { this.formal = formal; this.informal = informal; }
+        public ZarosanasNode(long ID, Type type, string formal, string informal, NodeList neighbors) : base(ID, type,neighbors) { this.formal = formal; this.informal = informal; }
+
+        // Lai zinātu, kas ir rakstīts uz zarošanās līnijas
+        public List<String> Branch
+        {
+            get
+            {
+                if (_branch == null)
+                    _branch = new List<string>();
+                return _branch;
+            }
+        }
+      
 
         
     }
@@ -155,13 +174,6 @@ namespace Validator_static
 
     };
 
-    public enum Branch
-    {
-        Ok,
-        No,
-        Nothing
-    };
-        
 
 
 

@@ -8,6 +8,10 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.Data.SQLite;
+using Microsoft.CSharp;
+using System.CodeDom;
+using System.CodeDom.Compiler;
+using System.Reflection;
 
 namespace Validator_static
 {
@@ -46,100 +50,177 @@ namespace Validator_static
         {
             //Grafa izveide
             var graph = LoadGraph();
-            Console.Write("test");
-            foreach (Node node in graph.Nodes)
+            // Glabājas virsotnes koka apstaigāšanai
+            Stack<Node> nodeStack = new Stack<Node>();
+            //Glabājam zarošanos ceļu skaitu, lai zinātu, kurā brīdī skatīties apvienošanas mezglu
+            Stack<int> branchCountStack = new Stack<int>();
+            //Glabājam zarošanās virsotnes, lai zinātu zarošanās noacījumus
+            Stack<ZarosanasNode> branchNode = new Stack<ZarosanasNode>();
+            int branchCounter = 0;
+            StringBuilder code = new StringBuilder();
+
+            // Iegūst sākuma virsotni un ieliek to iekš steka 
+            Node node = graph.getNodeByType(Type.Sakums);
+            // Glabāsim aktuālo zarošanās virsotni
+            ZarosanasNode zarosanasNode = null;
+
+            nodeStack.Push(node);
+
+          
+
+            //Koda sākumā jābūt jau nodefinētām lietām
+            code.AppendLine("using System; using System.Text.RegularExpressions; using System.Diagnostics;");
+            code.AppendLine(@"public  class Valid {
+                  public long id;
+                  public string licencespieprasitajs;
+                  public string registracijasnumurs;
+                  public string programmasnosaukums;
+
+                  public string programmasveids;
+                  public string realizacijasvieta;
+                  public int stundas;
+
+                  public string lemums;
+                  public string termins;
+                  public string licencesnumurs;
+
+                 private static TraceSource _source = new TraceSource(""quality"");
+
+                 public void Validator () 
+                 {
+                     _source.TraceEvent(TraceEventType.Verbose, 0, ""Sākums "" + id.ToString());");
+
+            //Ejam caur grafu un būvējam validatora kodu
+            while (nodeStack.Count != 0)
             {
-                //Iegūst rindas ar pārejām, kas saistītas ar notiekto virsotni 
-                var edgeRow = (from edge in graphInformation.Tables[2].AsEnumerable()
-                               where edge.Field<long>("EndNodeId") == node.ID || edge.Field<long>("StartNodeId") == node.ID
-                               select edge).ToList();
-
-                        
+                node = nodeStack.Pop();
+               
+               
                 switch (node.type)
-                {   
+                {
                     case Type.Sakums:
-                        
-                        graph.AddDirectedEdge(node, graph.getNodeByID(edgeRow[0].Field<long>("EndNodeId")));
-
                         break;
                     case Type.Beigas:
-
                         break;
-                    
                     case Type.Zarosanas:
-                        foreach (var edge in edgeRow)
-                        {   
-                            // Ieenākošam zaram apskatām vai nav gadījumā no zarošanās
-                            if (edge.Field<String>("Value") == "OK" && edge.Field<long>("EndNodeId") == node.ID)
-                            {
-                                node.branch = Branch.Ok;
-                            }
-                            else if (edge.Field<String>("value") == "NO" && edge.Field<long>("EndNodeId") == node.ID)
-                            {
-                                node.branch = Branch.No;
-                            }
-                            else if (edge.Field<String>("value") == "" && edge.Field<long>("EndNodeId") == node.ID)
-                            {
-                                continue;
-                            }
-                            else
-                            {
-                                graph.AddDirectedEdge(node, graph.getNodeByID(edge.Field<long>("EndNodeId")));
-                            }
+
+                        zarosanasNode = (ZarosanasNode)node;
+                        //Pieglabājam zarošanās virsotni iekš steka
+                        branchNode.Push(zarosanasNode);
+
+                        // Vajadzētu kaimiņus likt, lai else zars būtu pēdējais, tas ir iekš steka
+                        zarosanasNode.Neighbors.Reverse();
+                        //zarosanasNode.Branch.Reverse();
+
+                        //saliekam cik zari ir 
+                        if (branchCounter != 0)
+                        {
+                            // Nozīmē, ka ir izveidojusies jauna zarošanās, kā rezultātā, vecā vērtība jāpieglabā
+                            branchCountStack.Push(branchCounter);
+
+                            
+                        }
+                        // Piešķir, lai zinātu, cik zariem jāiet cauri, lai drīkstētu apskatīt apvienošanas virsotnes bērnus/kaimiņus
+                        branchCounter = zarosanasNode.Neighbors.Count;
+
+                        //Atkarībā no bērnu skaita var zināt, vai ir vairāki zari, vai tikai divi (attiecīgi true un false)
+                         if (zarosanasNode.Neighbors.Count == 2 )
+                        {
+                            code.AppendLine("//" +zarosanasNode.informal);
+                            code.AppendLine(@"if(" + zarosanasNode.formal + ")")
+                                .AppendLine(@"{");
+                        }
+                         else if (zarosanasNode.Neighbors.Count > 2)
+                        {
+                            code.AppendLine("//" +zarosanasNode.informal);
+                            code.AppendLine(@"if(" + zarosanasNode.formal +"" + zarosanasNode.Branch[0]+")")
+                                .AppendLine(@"{");
+
+                            // Nometam izmantoto branch nosacījumu
+                            zarosanasNode.Branch.RemoveAt(0);
                         }
 
                         break;
                     case Type.Darbiba:
-                        foreach (var edge in edgeRow)
-                        {
-
-                            if (edge.Field<String>("Value") == "OK" && edge.Field<long>("EndNodeId") == node.ID)
-                            {
-                                node.branch = Branch.Ok;
-                            }
-                            else if (edge.Field<String>("value") == "NO" && edge.Field<long>("EndNodeId") == node.ID)
-                            {
-                                node.branch = Branch.No;
-                            }
-                            else if (edge.Field<String>("value") == "" && edge.Field<long>("EndNodeId") == node.ID)
-                            {
-                                continue;
-                            }
-                            else
-                            {
-                                graph.AddDirectedEdge(node, graph.getNodeByID(edge.Field<long>("EndNodeId")));
-                            }
-                        }
+                        DarbibaNode darbibaNode = (DarbibaNode)node;
+                        // Darbības, kas jāizdara
+                        code.AppendLine(@"" + darbibaNode.name + ";");
                         break;
                     case Type.Apvienosana:
-                        foreach (var edge in edgeRow)
+                        // Ja vēl ir nepaskatīti zari jāturpina darbība
+                          if (branchCounter != 0)
                         {
-                           
-                            if (edge.Field<String>("Value") == "OK" && edge.Field<long>("EndNodeId") == node.ID)
+                            branchCounter--;
+                            code.AppendLine(@"} ");
+                            // Nodrošina, ka nekas jauns netiek pievienots, ja apskatīti visi zari
+                            if (branchCounter == 0)
                             {
-                                node.branch = Branch.Ok;
+                                break;
                             }
-                            else if (edge.Field<String>("value") == "NO" && edge.Field<long>("EndNodeId") == node.ID)
+
+                            // apskatām zarošanās node, lai zinātu, kas pa nosacījumu jāģenerē tālāk
+                           else if (zarosanasNode.Neighbors.Count == 2)
                             {
-                                node.branch = Branch.No;
+                                
+                                code.AppendLine(@"else")
+                                    .AppendLine(@"{");
                             }
-                            else if (edge.Field<String>("value") == "" && edge.Field<long>("EndNodeId") == node.ID)
+                            else if (zarosanasNode.Neighbors.Count > 2)
                             {
-                                continue;
+                                // Ja nav palicis tikai else zars, tad jāveido else if
+                                if (zarosanasNode.Branch.Count > 1)
+                                {
+                                   
+                                    code.AppendLine(@"else if(" + zarosanasNode.formal + "" + zarosanasNode.Branch[0] + ")")
+                                        .AppendLine(@"{");
+                                }
+                                else
+                                {
+                                 
+                                    code.AppendLine(@"else")
+                                        .AppendLine(@"{");
+                                }
+                               
+
+                                // Nometam izmantoto branch nosacījumu
+                                zarosanasNode.Branch.RemoveAt(0);
                             }
-                            else
-                            {
-                                graph.AddDirectedEdge(node, graph.getNodeByID(edge.Field<long>("EndNodeId")));
-                            }
+
+                            continue;
                         }
+                          // Ja visi zari ir apskatīti, bet vēl ir cita zarošanās, kas ir virszarošanās, kas notika, tad jāiet atpakaļ uz to
+                        else if (branchCounter == 0 && branchCountStack.Count > 0 )
+                        {
+                            branchCounter = branchCountStack.Pop();
+                            branchCountStack.Pop();
+                        }
+                        
+
                         break;
-               
+                    default:
+                        break;
                 }
 
-                Console.Write(node.ID);
+                // Saliekam virstotnes, kas būs jāapskata
+                foreach (var neighbor in node.Neighbors)
+                {
+                    nodeStack.Push(neighbor);
+                }
             }
 
+            //Pabeidzam funkcijas un klases definīciju
+            code.AppendLine(@"
+                    _source.TraceEvent(TraceEventType.Verbose, 0, ""Beigas "" + id.ToString());     } 
+                }");
+
+
+            //TODO: Jāsataisa, lai varētu kompilēt dll
             return;
+
+            //var compileResults = Compile(code.ToString(), "System.dll", "System.Data.dll", "System.Text.RegularExpressions.dll", "System.Diagnostics");
+            //var type = compileResults.CompiledAssembly.GetType("Valid");
+            //var 
+
 
 
 
@@ -159,10 +240,22 @@ namespace Validator_static
             //    validator.licencesnumurs =row["Licences-numurs"].ToString();
             //    validator.Validator();
             //}
-         
+
 
 
         }
+
+        public static CompilerResults Compile(string code, params string[] assemblies)
+        {
+            var csp = new CSharpCodeProvider();
+            var ccu = new CodeCompileUnit();
+            var cps = new CompilerParameters();
+            cps.ReferencedAssemblies.AddRange(assemblies);
+            cps.GenerateInMemory = true;
+            return csp.CompileAssemblyFromSource(cps, code);
+        }
+
+
 
         DataTable LoadData()
         {
@@ -205,6 +298,8 @@ namespace Validator_static
 
         Graph LoadGraph()
         {
+
+            // Iegūst nepieciešamo informāciju grafa izveidei
             graphInformation = new DataSet();
             
             using (var connection = new SQLiteConnection(@"Data Source=..\..\..\dbred.sqlite;Version=3;"))
@@ -251,37 +346,143 @@ namespace Validator_static
             }
 
             var graph = new  Graph();
+
+            //Saliek grafa virsotnes
             
             foreach (DataRow row in graphInformation.Tables[0].Rows )
             {
                 if (row.ItemArray[1].ToString() == "Sakums")
                 {
-                    graph.AddNode((long)row.ItemArray[0], Type.Sakums, Branch.Nothing);
+                    graph.AddNode((long)row.ItemArray[0], Type.Sakums);
                 }
                 else if (row.ItemArray[1].ToString() == "Beigas")
                 {
-                    graph.AddNode((long)row.ItemArray[0], Type.Beigas, Branch.Nothing);
+                    graph.AddNode((long)row.ItemArray[0], Type.Beigas);
                 }
                 else if (row.ItemArray[1].ToString() == "Apvienosana")
                 {
-                    graph.AddNode((long)row.ItemArray[0], Type.Apvienosana, Branch.Nothing);
+                    graph.AddNode((long)row.ItemArray[0], Type.Apvienosana);
                 }
                 else if (row.ItemArray[1].ToString() == "Darbiba")
                 {
                    
-                    graph.AddNode((long)row.ItemArray[0], Type.Darbiba, graphInformation.Tables[1].Rows.Find(new object[] { row.ItemArray[0], "Name" }).ItemArray[2].ToString(), 
-                        Branch.Nothing);
+                    graph.AddNode((long)row.ItemArray[0], Type.Darbiba, graphInformation.Tables[1].Rows.Find(new object[] { row.ItemArray[0], "Name" }).ItemArray[2].ToString() 
+                        );
                 }
 
                 else if (row.ItemArray[1].ToString() == "Zarosanas")
                 {
-                    graph.AddNode((long)row.ItemArray[0], Type.Zarosanas,Branch.Nothing,
+                    graph.AddNode((long)row.ItemArray[0], Type.Zarosanas,
                         graphInformation.Tables[1].Rows.Find(new object[] { row.ItemArray[0], "Informal" }).ItemArray[2].ToString(),
                         graphInformation.Tables[1].Rows.Find(new object[] { row.ItemArray[0], "Formal" }).ItemArray[2].ToString());
                 }
 
             }
-          
+            
+            /// Saliek saites grafa virsotnēm
+
+            foreach (Node node in graph.Nodes)
+            {
+                //Iegūst rindas ar pārejām, kas saistītas ar notiekto virsotni 
+                var edgeRow = (from edge in graphInformation.Tables[2].AsEnumerable()
+                               where  edge.Field<long>("StartNodeId") == node.ID
+                               select edge).ToList();
+
+
+                switch (node.type)
+                {
+                    case Type.Sakums:
+
+                        graph.AddDirectedEdge(node, graph.getNodeByID(edgeRow[0].Field<long>("EndNodeId")));
+
+                        break;
+                    case Type.Beigas:
+
+                        break;
+
+                    case Type.Zarosanas:
+                        var elseNode = node;
+                        ZarosanasNode zarosanasNode = (ZarosanasNode)node;
+                        foreach (var edge in edgeRow)
+                        {
+
+                            // Izdalām kas aiziet uz kuru zaru
+                            if (edge.Field<String>("Value") != "" && edge.Field<long>("StartNodeId") == node.ID)
+                            {
+                                graph.AddDirectedEdge(node, graph.getNodeByID(edge.Field<long>("EndNodeId")));
+                                // Vajag zināt kas ir uz zarošanās līnijas rakstīts
+                                zarosanasNode.Branch.Add(edge.Field<String>("Value"));
+
+                            }
+                            else if (edge.Field<String>("Value") == "" && edge.Field<long>("StartNodeId") == node.ID)
+                            {
+                                // Nodrošina, ka else zars vienmēr ir sarakstā pēdējais
+
+                                elseNode = graph.getNodeByID(edge.Field<long>("EndNodeId"));
+                               
+                            }
+
+                           
+                        }
+                        // Ieliekam else zaru pašās beigās 
+                        graph.AddDirectedEdge(node, elseNode);
+                        //zarosanasNode = (ZarosanasNode)elseNode;
+                        zarosanasNode.Branch.Add("Else");
+
+                        break;
+                    case Type.Darbiba:
+                        foreach (var edge in edgeRow)
+                        {
+
+                            //if (edge.Field<String>("Value") == "OK" && edge.Field<long>("EndNodeId") == node.ID)
+                            //{
+                            //   // node.branch = Branch.Ok;
+                            //}
+                            //else if (edge.Field<String>("value") == "NO" && edge.Field<long>("EndNodeId") == node.ID)
+                            //{
+                            //    //node.branch = Branch.No;
+                            //}
+                            //else if (edge.Field<String>("value") == "" && edge.Field<long>("EndNodeId") == node.ID)
+                            //{
+                            //    continue;
+                            //}
+                            //else
+                            //{
+                            //    graph.AddDirectedEdge(node, graph.getNodeByID(edge.Field<long>("EndNodeId")));
+                            //}
+                            graph.AddDirectedEdge(node, graph.getNodeByID(edge.Field<long>("EndNodeId")));
+                        }
+                        break;
+                    case Type.Apvienosana:
+                        foreach (var edge in edgeRow)
+                        {
+
+                            //if (edge.Field<String>("Value") == "OK" && edge.Field<long>("EndNodeId") == node.ID)
+                            //{
+                            //    //node.branch = Branch.Ok;
+                            //}
+                            //else if (edge.Field<String>("value") == "NO" && edge.Field<long>("EndNodeId") == node.ID)
+                            //{
+                            //    //node.branch = Branch.No;
+                            //}
+                            //else if (edge.Field<String>("value") == "" && edge.Field<long>("EndNodeId") == node.ID)
+                            //{
+                            //    continue;
+                            //}
+                            //else
+                            //{
+                            //    graph.AddDirectedEdge(node, graph.getNodeByID(edge.Field<long>("EndNodeId")));
+                            //}
+
+                            graph.AddDirectedEdge(node, graph.getNodeByID(edge.Field<long>("EndNodeId")));
+                        }
+                        break;
+
+                }
+
+                Console.Write(node.ID);
+            }
+
 
             return graph;
         }
