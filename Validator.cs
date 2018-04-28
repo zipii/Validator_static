@@ -12,42 +12,59 @@ using Microsoft.CSharp;
 using System.CodeDom;
 using System.CodeDom.Compiler;
 using System.Reflection;
+using System.Data.SqlClient;
 
 namespace Validator_static
 {
     public partial class Validator : Form
     {
         private DataSet graphInformation;
+        private int codeType;
+        private int databaseType;
+        private DataTable data;
+        private String graphDiagram;
+        String connectionString { get; set; } 
 
         DataGridView grid { get; set; }
         public Validator()
         {
             InitializeComponent();
-            this.Size = new System.Drawing.Size(500, 600);
+           // this.Size = new System.Drawing.Size(500, 600);
             //ielādē datus
-            var dt = LoadData();
+            //var dt = LoadData();
 
-            // izveido grid un pieliek datus
-         grid =    new DataGridView()
-            {
-                Parent = this,
-                Dock = DockStyle.Fill,
-                AllowUserToAddRows = false,
-                AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
-                AllowUserToDeleteRows = false,
-                DataSource = dt
-            };
+            //   // izveido grid un pieliek datus
+            //grid =    new DataGridView()
+            //   {
+            //       Parent = this,
+            //       Dock = DockStyle.Fill,
+            //       AllowUserToAddRows = false,
+            //       AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
+            //       AllowUserToDeleteRows = false,
+            //       //DataSource = dt
+            //   };
 
-            var button = new Button { Dock = DockStyle.Bottom, Width = 100, Parent = this, Text = "Nospied" };
+            //var button = new Button { Dock = DockStyle.Bottom, Width = 100, Parent = this, Text = "Nospied" };
+
 
             //lai nospiežot kaut kas notiek
 
-            button.Click += Button_Click;
+            //button.Click += Button_Click;
+
 
         }
 
         private void Button_Click(object sender, EventArgs e)
         {
+            if (databaseType == 1)
+            {
+                connectionString = @"Data Source =..\..\..\licences.db; Version = 3; ";
+            }
+            else if (databaseType == 2)
+            {
+                connectionString = "server = DELL; uid = data; pwd = !@#qazWSX; database = Data_quality";
+            }
+            data = LoadData();
             //Grafa izveide
             var graph = LoadGraph();
             // Glabājas virsotnes koka apstaigāšanai
@@ -66,11 +83,14 @@ namespace Validator_static
 
             nodeStack.Push(node);
 
-          
+
 
             //Koda sākumā jābūt jau nodefinētām lietām
-            code.AppendLine("using System; using System.Text.RegularExpressions; using System.Diagnostics;");
-            code.AppendLine(@"public  class Valid {
+            // Priekš C#
+            if (codeType == 1)
+            {
+                code.AppendLine("using System; using System.Text.RegularExpressions; using System.Diagnostics;");
+                code.AppendLine(@"public  class Valid {
                   public long id;
                   public string licencespieprasitajs;
                   public string registracijasnumurs;
@@ -89,7 +109,22 @@ namespace Validator_static
                  public void Validator () 
                  {
                      _source.TraceEvent(TraceEventType.Verbose, 0, ""Sākums "" + id.ToString());");
-
+            }
+            // Priekš SQL
+            else if (codeType == 2)
+            {
+                code.AppendLine(@"using System;using System.Data.SqlClient; using System.Data;");
+                code.AppendLine(@"public class Valid {
+                        private DataTable data = new DataTable(); 
+                        public void Validator ()
+                        {
+                            using (var connection = new SqlConnection("""+connectionString + @""") )
+                             {      connection.Open();
+                                     using (var adapter = new SqlDataAdapter())
+                                        {
+                                             using (var cmd = new SqlCommand())
+                                             {        cmd.Connection = connection;");
+            }
             //Ejam caur grafu un būvējam validatora kodu
             while (nodeStack.Count != 0)
             {
@@ -127,8 +162,28 @@ namespace Validator_static
                          if (zarosanasNode.Neighbors.Count == 2 )
                         {
                             code.AppendLine("//" +zarosanasNode.informal);
-                            code.AppendLine(@"if(" + zarosanasNode.formal + ")")
-                                .AppendLine(@"{");
+                            // C# gadījuma (codetype == 1) nosacījums ir uzreiz if'ā
+                            // SQL gadījumā (codetype == 2) nosacījums ir jāieliek datu tabulā un jāizpilda
+                            if (codeType == 1)
+                            {
+                                code.AppendLine(@"if(" + zarosanasNode.formal + ")")
+                                                         .AppendLine(@"{");
+                            }
+                            else if (codeType == 2)
+                            {
+                                code.AppendLine(@"
+                                    cmd.CommandText = @"""+zarosanasNode.formal+@""";
+                                    adapter.SelectCommand = cmd;
+                                    adapter.Fill(data);
+                                    // Pārbaudam vai kat kas atbilst nosacījumiem
+                                    if ( data.Rows.Count > 0) 
+                                        { 
+                                    
+
+
+                                ");
+                            }
+                     
                         }
                          else if (zarosanasNode.Neighbors.Count > 2)
                         {
@@ -144,7 +199,19 @@ namespace Validator_static
                     case Type.Darbiba:
                         DarbibaNode darbibaNode = (DarbibaNode)node;
                         // Darbības, kas jāizdara
-                        code.AppendLine(@"" + darbibaNode.name + ";");
+                        // Ja ir SQL (codetype == 2) , tad ir jāveido insert
+                        if (codeType == 1)
+                        {
+                            code.AppendLine(@"" + darbibaNode.name + ";");
+                        }
+                        else if (codeType == 2)
+                        {
+                            code.AppendLine(@"
+                            cmd.CommandText = """ + darbibaNode.name + @""";
+                            cmd.ExecuteNonQuery();
+                            ");
+                        }
+                        
                         break;
                     case Type.Apvienosana:
                         // Ja vēl ir nepaskatīti zari jāturpina darbība
@@ -155,6 +222,13 @@ namespace Validator_static
                             // Nodrošina, ka nekas jauns netiek pievienots, ja apskatīti visi zari
                             if (branchCounter == 0)
                             {
+                                // Ja ir SQL (codetype == 2), tad ir pēc visu zaru apskatīšanas jāiztīra dataset
+                                if (codeType == 2)
+                                {
+                                    code.AppendLine(@"
+                                       data.Clear();     
+                                    ");
+                                }
                                 break;
                             }
 
@@ -209,13 +283,25 @@ namespace Validator_static
             }
 
             //Pabeidzam funkcijas un klases definīciju
-            code.AppendLine(@"
+            if (codeType == 1)
+            {
+                code.AppendLine(@"
                     _source.TraceEvent(TraceEventType.Verbose, 0, ""Beigas "" + id.ToString());     } 
                 }");
+            }
+            else if ( codeType  == 2 )
+            {
+                code.AppendLine(@"              }
+                                    } 
+                            } 
+                    }
+                }");
+            }
+
 
 
             //TODO: Jāsataisa, lai varētu kompilēt dll
-            return;
+            //return;
 
             //var compileResults = Compile(code.ToString(), "System.dll", "System.Data.dll", "System.Text.RegularExpressions.dll", "System.Diagnostics");
             //var type = compileResults.CompiledAssembly.GetType("Valid");
@@ -241,7 +327,8 @@ namespace Validator_static
             //    validator.Validator();
             //}
 
-
+            Valid test = new Valid();
+            test.Validator();
 
         }
 
@@ -260,36 +347,46 @@ namespace Validator_static
         DataTable LoadData()
         {
             var  dt = new DataTable();
-           
-            using ( var connection = new SQLiteConnection(@"Data Source=..\..\..\licences.db;Version=3;"))
+            // Vecā ielase no  sqlite datubāzes 
+            if (databaseType == 1)
             {
-                connection.Open();
 
-                using (var adapter = new SQLiteDataAdapter())
-                {
-                    using (var cmd = new SQLiteCommand())
+
+                    using (var connection = new SQLiteConnection(connectionString))
                     {
-                        cmd.Connection = connection;
-                        cmd.CommandText = "SELECT * FROM [Licences-2013]";
-                        adapter.SelectCommand = cmd;
-                        adapter.Fill(dt);
+                        connection.Open();
+
+                        using (var adapter = new SQLiteDataAdapter())
+                        {
+                            using (var cmd = new SQLiteCommand())
+                            {
+                                cmd.Connection = connection;
+                                cmd.CommandText = "SELECT * FROM [Licences-2013]";
+                                adapter.SelectCommand = cmd;
+                                adapter.Fill(dt);
+                            }
+                        }
+                    }
+            }
+            else if (databaseType == 2)
+            {
+                using (var connection = new SqlConnection(connectionString) )
+                {
+                    connection.Open();
+                    using (var adapter = new SqlDataAdapter())
+                    {
+                        using (var cmd = new SqlCommand())
+                        {
+                            cmd.Connection = connection;
+                            cmd.CommandText = "SELECT * FROM Data_quality.dbo.register";
+                            adapter.SelectCommand = cmd;
+                            adapter.Fill(dt);
+                        }
                     }
                 }
             }
-            //dt.Columns.Add("Licences-Pieprasitajs",typeof(string));
-            //dt.Columns.Add("Registracijas-numurs",typeof(string));
-            //dt.Columns.Add("Programmas-nosaukums", typeof(string));
-            //dt.Columns.Add("Programmas-veids", typeof(string));
-            //dt.Columns.Add("Realiacijas-vieta", typeof(string));
-            //dt.Columns.Add("Stundas", typeof(int));
-            //dt.Columns.Add("Lemums", typeof(string));
-            //dt.Columns.Add("Termins", typeof(DateTime));
-            //dt.Columns.Add("Licences-numurs", typeof(string));
 
-            //dt.Rows.Add("Klavs", "12345678910", "Test",
-            //   "Nepareizs", "Latvija", 2, 
-            //   "pagarināt", "04/03/2018", "Numurs");
-            //return dt;
+
 
             return dt;
 
@@ -302,7 +399,7 @@ namespace Validator_static
             // Iegūst nepieciešamo informāciju grafa izveidei
             graphInformation = new DataSet();
             
-            using (var connection = new SQLiteConnection(@"Data Source=..\..\..\dbred.sqlite;Version=3;"))
+            using (var connection = new SQLiteConnection(@"Data Source="+ graphDiagram +";Version=3;"))
             {
                 connection.Open();
 
@@ -314,15 +411,15 @@ namespace Validator_static
                         cmd.CommandText = @"
                             
                             SELECT Node.ID, Node.Type FROM Node
-                            WHERE Node.DiagramId = 21;
+                            WHERE Node.DiagramId = 11;
 
                             SELECT Node.ID ,Compartment.Type 'Text', Compartment.Value FROM Node
                             LEFT JOIN Compartment ON Node.ID = Compartment.ElementId
-                            WHERE Node.DiagramId = 21;
+                            WHERE Node.DiagramId = 11;
 
                             SELECT Edge.ID, Edge.StartNodeId, Edge.EndNodeId, Compartment.Value  FROM Edge
                             Join Compartment ON Edge.ID = Compartment.ElementId
-                            WHERE  Edge.DiagramId = 21 AND Edge.Type like 'Pareja' AND Compartment.Type like 'Name' ;
+                            WHERE  Edge.DiagramId = 11 AND Edge.Type like 'Pareja' AND Compartment.Type like 'Name' ;
                             
                           
                             
@@ -366,7 +463,7 @@ namespace Validator_static
                 else if (row.ItemArray[1].ToString() == "Darbiba")
                 {
                    
-                    graph.AddNode((long)row.ItemArray[0], Type.Darbiba, graphInformation.Tables[1].Rows.Find(new object[] { row.ItemArray[0], "Name" }).ItemArray[2].ToString() 
+                    graph.AddNode((long)row.ItemArray[0], Type.Darbiba, graphInformation.Tables[1].Rows.Find(new object[] { row.ItemArray[0], "Activity" }).ItemArray[2].ToString() 
                         );
                 }
 
@@ -487,9 +584,24 @@ namespace Validator_static
             return graph;
         }
 
+        private void Code_Type_Changed(object sender, EventArgs e)
+        {
+            codeType = (rbtnC.Checked) ? 1 : 2;
+        }
 
+        private void Database_Changed(object sender, EventArgs e)
+        {
+            databaseType = (rbtnSQLite.Checked) ? 1 : 2;
+        }
 
+        private void btnGraphDb_Click(object sender, EventArgs e)
+        {
+            openFile.ShowDialog();
+        }
 
-   
+        private void Choose_Graph_Diagram(object sender, CancelEventArgs e)
+        {
+            graphDiagram = ((System.Windows.Forms.FileDialog)sender).FileName;
+        }
     }
 }
