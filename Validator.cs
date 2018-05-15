@@ -19,10 +19,12 @@ namespace Validator_static
     public partial class Validator : Form
     {
         private DataSet graphInformation;
-        private int codeType;
-        private int databaseType;
+        // Pēc noklusējuma pirmais ir atzīmēts
+        private int codeType = 1 ;
+        private int databaseType = 1;
         private DataTable data;
         private String graphDiagram;
+        //private List<String> parameters;
         String connectionString { get; set; } 
 
         DataGridView grid { get; set; }
@@ -92,19 +94,20 @@ namespace Validator_static
                 code.AppendLine("using System; using System.Text.RegularExpressions; using System.Diagnostics;");
                 code.AppendLine(@"public  class Valid {
                   public long id;
-                  public string licencespieprasitajs;
-                  public string registracijasnumurs;
-                  public string programmasnosaukums;
+                 ");
 
-                  public string programmasveids;
-                  public string realizacijasvieta;
-                  public int stundas;
+                // Ejam cauri parametriem un pieliekam tos kodam
+                if (graphInformation.Tables[3].Rows.Count > 0)
+                {
+                    foreach (DataRow row in graphInformation.Tables[3].Rows)
+                    {
+                        code.AppendLine("" + row.ItemArray[1] + ";");
+                    }
+                }
 
-                  public string lemums;
-                  public string termins;
-                  public string licencesnumurs;
-
-                 private static TraceSource _source = new TraceSource(""quality"");
+      
+               // Pieliekam validatora sākumu 
+               code.AppendLine (@"  private static TraceSource _source = new TraceSource(""quality"");
 
                  public void Validator () 
                  {
@@ -411,15 +414,30 @@ namespace Validator_static
                         cmd.CommandText = @"
                             
                             SELECT Node.ID, Node.Type FROM Node
-                            WHERE Node.DiagramId = 11;
+                            WHERE Node.DiagramId = 21;
 
                             SELECT Node.ID ,Compartment.Type 'Text', Compartment.Value FROM Node
                             LEFT JOIN Compartment ON Node.ID = Compartment.ElementId
-                            WHERE Node.DiagramId = 11;
+                            WHERE Node.DiagramId = 21;
 
                             SELECT Edge.ID, Edge.StartNodeId, Edge.EndNodeId, Compartment.Value  FROM Edge
                             Join Compartment ON Edge.ID = Compartment.ElementId
-                            WHERE  Edge.DiagramId = 11 AND Edge.Type like 'Pareja' AND Compartment.Type like 'Name' ;
+                            WHERE  Edge.DiagramId = 21 AND Edge.Type like 'Pareja' AND Compartment.Type like 'Name' ;
+
+                            --- Savienojam Compartment pašu ar sevi, lau uzreiz iznāktu mainīgais
+                            SELECT Node.Id,  c1.Value || "" "" || C2.Value AS 'Variables' FROM Node
+                            JOIN Compartment c1, Compartment c2 ON Node.ID = c1.ElementId AND Node.ID = c2.ElementId
+                            WHERE c1.ElementType = 'Parametrs'  AND c2.Type = 'Name' AND c1.Type = 'Type' AND Node.DiagramId = 
+                                    (
+                                           SELECT ID FROM Diagram
+                                           WHERE Diagram.NodeId =
+                                           (SELECT Compartment.ElementId FROM Compartment WHERE Compartment.ElementType <> 'Sakums' AND(SELECT replace(Compartment.Value, "" "", """")) like
+                                           (SELECT REPLACE((SELECT Compartment.Value FROM Node JOIN Compartment ON Node.Id = Compartment.ElementId WHERE Node.DiagramId = 21 AND Compartment.ElementType = 'Sakums'), "" "", """")))
+		                            )
+						
+
+                       
+							
                             
                           
                             
@@ -430,11 +448,12 @@ namespace Validator_static
                         graphInformation.Tables[0].TableName = "Node";
                         graphInformation.Tables[1].TableName = "Compartment";
                         graphInformation.Tables[2].TableName = "Edge";
+                        graphInformation.Tables[3].TableName = "Parametrs";
 
                         graphInformation.Tables[0].PrimaryKey = new DataColumn[] { graphInformation.Tables[0].Columns["ID"] };
-                        //TODO: pārliec ka apvienošanai ir vismaz 1 atribūts
                         graphInformation.Tables[1].PrimaryKey = new DataColumn[] { graphInformation.Tables[1].Columns["ID"], graphInformation.Tables[1].Columns["Text"]  };
                         graphInformation.Tables[2].PrimaryKey = new DataColumn[] { graphInformation.Tables[2].Columns["ID"], graphInformation.Tables[2].Columns["StartNodeId"], graphInformation.Tables[2].Columns["EndNodeId"] };
+                        graphInformation.Tables[3].PrimaryKey = new DataColumn[] { graphInformation.Tables[3].Columns["ID"] };
 
 
 
@@ -602,6 +621,7 @@ namespace Validator_static
         private void Choose_Graph_Diagram(object sender, CancelEventArgs e)
         {
             graphDiagram = ((System.Windows.Forms.FileDialog)sender).FileName;
+            txtGraphDiagram.Text  = ((System.Windows.Forms.FileDialog)sender).FileName;
         }
     }
 }
