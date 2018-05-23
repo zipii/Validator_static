@@ -91,7 +91,7 @@ namespace Validator_static
             // Priekš C#
             if (codeType == 1)
             {
-                code.AppendLine("using System; using System.Text.RegularExpressions; using System.Diagnostics;");
+                code.AppendLine(@"using System; using System.Text.RegularExpressions; using System.Diagnostics; using System.Data; using System.Linq;");
                 code.AppendLine(@"public  class Valid {
                   public long id;
                  ");
@@ -101,17 +101,28 @@ namespace Validator_static
                 {
                     foreach (DataRow row in graphInformation.Tables[3].Rows)
                     {
-                        code.AppendLine("" + row.ItemArray[1] + ";");
+                        code.AppendLine("public " + row.ItemArray[1] + ";");
                     }
                 }
 
       
-               // Pieliekam validatora sākumu 
-               code.AppendLine (@"  private static TraceSource _source = new TraceSource(""quality"");
-
+               // Pieliekam SendMessages, konstruktoru un validatora sākumu 
+               code.AppendLine (@" 
+                public DataTable data = new DataTable();
+                public Valid()
+                {        
+                    data.Columns.Add(""rowid"", typeof(long));
+                    data.Columns.Add(""error"", typeof(string));
+                }
+                private void SendMessage(long rowid, long errornum)
+                {
+                    DataRow dr = data.NewRow();
+                    dr[""rowid""] = rowid;
+                    dr[""error""] = errornum.ToString();
+                    data.Rows.Add(dr);
+                }
                  public void Validator () 
-                 {
-                     _source.TraceEvent(TraceEventType.Verbose, 0, ""Sākums "" + id.ToString());");
+                 { ");
             }
             // Priekš SQL
             else if (codeType == 2)
@@ -289,7 +300,7 @@ namespace Validator_static
             if (codeType == 1)
             {
                 code.AppendLine(@"
-                    _source.TraceEvent(TraceEventType.Verbose, 0, ""Beigas "" + id.ToString());     } 
+                        } 
                 }");
             }
             else if ( codeType  == 2 )
@@ -303,35 +314,56 @@ namespace Validator_static
 
 
 
-            //TODO: Jāsataisa, lai varētu kompilēt dll
-            //return;
-
-            //var compileResults = Compile(code.ToString(), "System.dll", "System.Data.dll", "System.Text.RegularExpressions.dll", "System.Diagnostics");
-            //var type = compileResults.CompiledAssembly.GetType("Valid");
-            //var 
 
 
+            var compileResults = Compile(code.ToString(), "System.dll", "System.Data.dll", "System.Text.RegularExpressions.dll", "System.Linq.dll", "System.Core.dll", "System.Xml.dll");
+            var assembly = compileResults.CompiledAssembly;
+            var type = assembly.GetType("Valid");
+            var method = type.GetMethod("Validator");
+            var instance = Activator.CreateInstance(type);
 
+            // Ja ir SQL, tad nav datu objekta  
+            if (codeType == 1)
+            {
+                //validējam katru rindu
+                foreach (DataRow row in data.Rows)
+                {
+                    foreach (FieldInfo field in type.GetFields())
+                    {
+                        // data lauks nav jāapskata
+                        if (field.Name == "data") continue;
+                        type.GetField(field.Name)
+                            .SetValue(instance, row[field.Name] == DBNull.Value ?
+                            default(string) : row[field.Name]);
 
-            //var validator = new Valid_2();
-            //var dt = (DataTable)grid.DataSource;
-            //foreach (DataRow  row in dt.Rows)
-            //{
-            //    validator.id = (long)row["ID"];
-            //    validator.licencespieprasitajs = row["Licences-pieprasitajs"].ToString();
-            //    validator.registracijasnumurs = row["Registracijas-numurs"].ToString();
-            //    validator.programmasnosaukums = row["Programmas-nosaukums"].ToString();
-            //    validator.programmasveids = row["Programmas-veids"].ToString();
-            //    validator.realizacijasvieta = row["Realizacijas-vieta"].ToString();
-            //    validator.stundas =  (row["Stundas"].ToString() == "") ? 0 : Convert.ToInt32(row["Stundas"].ToString());
-            //    validator.lemums = row["Lemums"].ToString();
-            //    validator.termins = row["Termins"].ToString();
-            //    validator.licencesnumurs =row["Licences-numurs"].ToString();
-            //    validator.Validator();
-            //}
+                    }
+                    // zinām ka jābūt ID, kas nav nodefinēts datu objektā
+                    //type.GetField("id").SetValue(instance, row["id"]);
 
-            Valid test = new Valid();
-            test.Validator();
+                    method.Invoke(instance, null);
+                }
+                // J kaut kas ir ievietots datu tabulā (ir izmantots SendMessages) ir jāveic ievietošana serverī
+                if (((DataTable)type.GetField("data").GetValue(instance)).Rows.Count > 0)
+                {
+                    // Pārkopējam visas kļūdas uz serveri
+                    SqlBulkCopy bulkCopy = new SqlBulkCopy(connectionString);
+                    //Kartējam datu tabulas kolonnas uz servera kolonnām, zināms, ka vienmēr būs 2 kolonnas
+                    // datubazē ir identity kolonna kuras vērtības neievietojam
+                    bulkCopy.ColumnMappings.Add(0, 1);
+                    bulkCopy.ColumnMappings.Add(1, 2);
+
+                    bulkCopy.DestinationTableName = "registerLV_errors_c#";
+                    bulkCopy.WriteToServer((DataTable)type.GetField("data").GetValue(instance));
+                }
+
+            }
+            else
+            {
+                method.Invoke(instance, null);
+            }
+
+         
+
 
         }
 
@@ -414,25 +446,25 @@ namespace Validator_static
                         cmd.CommandText = @"
                             
                             SELECT Node.ID, Node.Type FROM Node
-                            WHERE Node.DiagramId = 21;
+                            WHERE Node.DiagramId = 14;
 
                             SELECT Node.ID ,Compartment.Type 'Text', Compartment.Value FROM Node
                             LEFT JOIN Compartment ON Node.ID = Compartment.ElementId
-                            WHERE Node.DiagramId = 21;
+                            WHERE Node.DiagramId = 14;
 
                             SELECT Edge.ID, Edge.StartNodeId, Edge.EndNodeId, Compartment.Value  FROM Edge
                             Join Compartment ON Edge.ID = Compartment.ElementId
-                            WHERE  Edge.DiagramId = 21 AND Edge.Type like 'Pareja' AND Compartment.Type like 'Name' ;
+                            WHERE  Edge.DiagramId = 14 AND Edge.Type like 'Pareja' AND Compartment.Type like 'Name' ;
 
                             --- Savienojam Compartment pašu ar sevi, lau uzreiz iznāktu mainīgais
-                            SELECT Node.Id,  c1.Value || "" "" || C2.Value AS 'Variables' FROM Node
+                            SELECT Node.Id,  c1.Value || "" "" || C2.Value AS 'Variables', C2.Value AS 'Parameter' FROM Node
                             JOIN Compartment c1, Compartment c2 ON Node.ID = c1.ElementId AND Node.ID = c2.ElementId
                             WHERE c1.ElementType = 'Parametrs'  AND c2.Type = 'Name' AND c1.Type = 'Type' AND Node.DiagramId = 
                                     (
                                            SELECT ID FROM Diagram
                                            WHERE Diagram.NodeId =
                                            (SELECT Compartment.ElementId FROM Compartment WHERE Compartment.ElementType <> 'Sakums' AND(SELECT replace(Compartment.Value, "" "", """")) like
-                                           (SELECT REPLACE((SELECT Compartment.Value FROM Node JOIN Compartment ON Node.Id = Compartment.ElementId WHERE Node.DiagramId = 21 AND Compartment.ElementType = 'Sakums'), "" "", """")))
+                                           (SELECT REPLACE((SELECT Compartment.Value FROM Node JOIN Compartment ON Node.Id = Compartment.ElementId WHERE Node.DiagramId = 14 AND Compartment.ElementType = 'Sakums'), "" "", """")))
 		                            )
 						
 
@@ -622,6 +654,11 @@ namespace Validator_static
         {
             graphDiagram = ((System.Windows.Forms.FileDialog)sender).FileName;
             txtGraphDiagram.Text  = ((System.Windows.Forms.FileDialog)sender).FileName;
+        }
+
+        public static void SendMessage(long rowId, long error)
+        {
+
         }
     }
 }

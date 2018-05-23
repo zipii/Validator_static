@@ -167,7 +167,6 @@ namespace Validator_static
     {
         Sakums,
         Beigas,
-        Pareja,
         Zarosanas,
         Darbiba,
         Apvienosana
